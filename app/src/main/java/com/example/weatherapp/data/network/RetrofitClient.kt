@@ -11,9 +11,9 @@ object RetrofitClient {
     const val GEO_API_KEY =
         "pk.eyJ1IjoibmljaXRhY3IiLCJhIjoiY2xlNGltNXJzMDNnajNvcGI3a3dma3RveiJ9.Q_rJ43grF8Tn1aEef7Ebnw"
 
-    const val WEATHER_API_KEY = "c40f58e8-8c10-4e3c-809f-bb6e4e43f0ed"
+    const val WEATHER_API_KEY = "e5d59015e9e744cc842163459231203"
     private const val WEATHER_BASE_URL =
-        "https://api.weather.yandex.ru/v2/"
+        "https://api.weatherapi.com/v1/"
 
     private val moshi: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
 

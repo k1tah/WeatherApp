@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.weatherapp.ui.theme.WeatherAppTheme
+import com.example.weatherapp.utills.LoadingState
 import com.example.weatherapp.utills.Times
 import com.example.weatherapp.utills.checkPermission
 import com.example.weatherapp.utills.showShortToast
@@ -82,7 +83,8 @@ fun HomeScreen(
         }
     }
     //get location
-    val locationCallback = rememberSaveable {
+    val place = viewModel.selectedPlace.observeAsState().value
+    val locationCallback = remember {
         object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 super.onLocationResult(locationResult)
@@ -121,7 +123,7 @@ fun HomeScreen(
         }
     }*/
     //get location 2
-    if (showDefaultLocation){
+    if (showDefaultLocation) {
         try {
             fusedLocationClient.requestLocationUpdates(
                 locationRequest,
@@ -133,17 +135,14 @@ fun HomeScreen(
         }
     }
 
-    val place = viewModel.selectedPlace.observeAsState().value
-    viewModel.getWeatherInSelectedPlace(place!!) {
-        showShortToast(context, it)
-    }
+    val placeLoadingState = viewModel.placeLoadingState.observeAsState().value!!
 
     val pages = listOf(Times.Now, Times.Tomorrow, Times.Week)
     val selectedTime = rememberPagerState(pageCount = pages.size)
 
 
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize().padding(vertical = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -155,7 +154,7 @@ fun HomeScreen(
             pages,
             selectedTime
         )
-        Spacer(modifier = Modifier.size(32.dp))
+        Spacer(modifier = Modifier.size(48.dp))
         AnimatedVisibility(visible = showDialogWindow) {
             DialogWindow(
                 onAccept = {
@@ -168,11 +167,25 @@ fun HomeScreen(
             )
         }
         if (!showDialogWindow) {
-            Text(text = place.name)
-            Spacer(modifier = Modifier.size(32.dp))
+            when (placeLoadingState) {
+                LoadingState.Loading ->{
+                    Text(text = "Location determination...")
+                }
+                LoadingState.Error ->{
+                    viewModel.getWeatherInSelectedPlace(place!!) {
+                        showShortToast(context, it)
+                    }
+                    Text(text = place.name)
+                }
+                LoadingState.Done -> {
+                    Text(text = place!!.name)
+                }
+            }
+            Spacer(modifier = Modifier.size(16.dp))
             HorizontalPager(
                 state = selectedTime,
-                dragEnabled = false
+                dragEnabled = false,
+                modifier = Modifier.fillMaxHeight()
             ) {
                 pages[it].view()
             }

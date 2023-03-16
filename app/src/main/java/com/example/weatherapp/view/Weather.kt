@@ -1,23 +1,32 @@
 package com.example.weatherapp.view
 
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.weatherapp.R
+import com.example.weatherapp.model.HourWeatherSpecs
 import com.example.weatherapp.ui.theme.WeatherAppTheme
 import com.example.weatherapp.utills.LoadingState
 import com.example.weatherapp.viewModel.WeatherViewModel
@@ -27,14 +36,15 @@ fun NowWeather(
     viewModel: WeatherViewModel = viewModel()
 ) {
     val temperature =
-        viewModel.forecastAtSelectedPlace.observeAsState().value?.factWeather!!.temperature
+        viewModel.forecastAtSelectedPlace.observeAsState().value?.currentWeatherSpecs!!.temperature
     val condition =
-        viewModel.forecastAtSelectedPlace.observeAsState().value?.factWeather!!.condition
+        viewModel.forecastAtSelectedPlace.observeAsState().value?.currentWeatherSpecs!!.condition
+    val loadingState = viewModel.forecastsLoadingState.observeAsState().value!!
     Weather(
         temperature = temperature,
-        condition = condition,
+        conditionCode = condition.conditionCode,
         date = "Now",
-        LoadingState.Done,
+        loadingState,
         modifier = Modifier.fillMaxWidth()
     )
 }
@@ -44,44 +54,152 @@ fun TomorrowWeather(
     viewModel: WeatherViewModel = viewModel()
 ) {
     val temperature =
-        viewModel.forecastAtSelectedPlace.observeAsState().value?.forecastsWeather!![1].parts.dayWeather.temperature
+        viewModel.forecastAtSelectedPlace.observeAsState().value?.forecastsWeather!!.listForecasts[1].day.temperature
     val condition =
-        viewModel.forecastAtSelectedPlace.observeAsState().value?.forecastsWeather!![1].parts.dayWeather.condition
+        viewModel.forecastAtSelectedPlace.observeAsState().value?.forecastsWeather!!.listForecasts[1].day.condition
     val date =
-        viewModel.forecastAtSelectedPlace.observeAsState().value?.forecastsWeather!![1].date
-    Weather(
-        temperature = temperature,
-        condition = condition,
-        date = date,
-        LoadingState.Done,
-        modifier = Modifier.fillMaxWidth()
-    )
+        viewModel.forecastAtSelectedPlace.observeAsState().value?.forecastsWeather!!.listForecasts[1].date
+    val loadingState = viewModel.forecastsLoadingState.observeAsState().value!!
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = date)
+        Spacer(modifier = Modifier.size(8.dp))
+        Weather(
+            temperature = temperature,
+            conditionCode = condition.conditionCode,
+            date = "Tomorrow",
+            loadingState,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable
 fun WeekWeather(
-    viewModel: WeatherViewModel = viewModel(),
+    viewModel: WeatherViewModel = viewModel()
 ) {
     val forecast =
-        viewModel.forecastAtSelectedPlace.observeAsState().value?.forecastsWeather!!.take(7)
-    LazyRow(
-        modifier = Modifier.fillMaxWidth()
+        viewModel.forecastAtSelectedPlace.observeAsState().value?.forecastsWeather!!.listForecasts
+    val listState = rememberLazyListState()
+    var selected by remember {
+        mutableStateOf("")
+    }
+    var showHourlyWeather by remember {
+        mutableStateOf(false)
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(top = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        items(items = forecast) { item ->
-            Weather(
-                temperature = item.parts.dayWeather.temperature,
-                condition = item.parts.dayWeather.condition,
-                date = item.date,
-                LoadingState.Done
+        when (viewModel.forecastsLoadingState.observeAsState().value!!) {
+            LoadingState.Loading -> {
+                CircularProgressIndicator()
+            }
+            LoadingState.Error -> {
+                Icon(
+                    painter = rememberVectorPainter(image = Icons.Rounded.Warning),
+                    contentDescription = "error"
+                )
+            }
+            LoadingState.Done -> {
+                LazyRow(
+                    state = listState,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(items = forecast) { item ->
+                        Weather(
+                            temperature = item.day.temperature,
+                            conditionCode = item.day.condition.conditionCode,
+                            date = item.date,
+                            LoadingState.Done,
+                            modifier = Modifier.selectable(
+                                selected = item.date == selected,
+                                onClick = {
+                                    if (selected != item.date) {
+                                        selected = item.date
+                                        showHourlyWeather = true
+                                    } else {
+                                        showHourlyWeather = !showHourlyWeather
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.size(64.dp))
+                forecast.find { it.date == selected }?.hour?.let {
+                    AnimatedVisibility(
+                        visible = showHourlyWeather,
+                        enter = slideInVertically(),
+                        exit = slideOutVertically()
+                    ) {
+                        HourlyWeather(forecast = it)
+                    }
+                }
+
+            }
+        }
+    }
+}
+
+@Composable
+fun HourlyWeather(
+    forecast: List<HourWeatherSpecs>,
+    viewModel: WeatherViewModel = viewModel()
+) {
+    when (viewModel.forecastsLoadingState.observeAsState().value!!) {
+        LoadingState.Loading -> {
+            CircularProgressIndicator()
+        }
+        LoadingState.Error -> {
+            Icon(
+                painter = rememberVectorPainter(image = Icons.Rounded.Warning),
+                contentDescription = "error"
             )
+        }
+        LoadingState.Done -> {
+            Column(
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "Hours:")
+                Spacer(modifier = Modifier.size(16.dp))
+                if (forecast.isEmpty()) {
+                    Row {
+                        Icon(
+                            painter = rememberVectorPainter(image = Icons.Rounded.Warning),
+                            contentDescription = "no data"
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(text = "No data")
+                    }
+                } else {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(items = forecast) { item ->
+                            Weather(
+                                temperature = item.temperature,
+                                conditionCode = item.condition.conditionCode,
+                                date = item.hour,
+                                LoadingState.Done
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
 fun Weather(
-    temperature: Int,
-    condition: String,
+    temperature: Double,
+    conditionCode: Int,
     date: String,
     loadingState: LoadingState,
     modifier: Modifier = Modifier
@@ -90,12 +208,15 @@ fun Weather(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        when(loadingState){
+        when (loadingState) {
             LoadingState.Loading -> {
-
+                CircularProgressIndicator()
             }
             LoadingState.Error -> {
-                //Icon(painter = Icons.Rounded, contentDescription = "error")
+                Icon(
+                    painter = rememberVectorPainter(image = Icons.Rounded.Warning),
+                    contentDescription = "error"
+                )
             }
             LoadingState.Done -> {
                 Text(
@@ -112,26 +233,55 @@ fun Weather(
                 ) {
                     Icon(
                         modifier = Modifier.size(32.dp),
-                        painter = when (condition) {
-                            "overcast" -> painterResource(id = R.drawable.c3)
-                            "light-snow" -> painterResource(id = R.drawable.c3_s1)
-                            "clear" -> painterResource(id = R.drawable.d)
-                            "rain" -> painterResource(id = R.drawable.ovc_mra)
-                            "partly-cloudy" -> painterResource(id = R.drawable.ic_baseline_cloud_24)
-                            "cloudy" -> painterResource(id = R.drawable.bkn_d)
-                            "drizzle" -> painterResource(id = R.drawable.ovc_ra)
-                            "light_rain" -> painterResource(id = R.drawable.c3_r1)
-                            "moderate-rain" -> painterResource(id = R.drawable.c3_r2)
-                            "heavy_rain" -> painterResource(id = R.drawable.c3_r3)
-                            "continuous-heavy-rain" -> painterResource(id = R.drawable.c3_r3)
-                            "showers" -> painterResource(id = R.drawable.c3_r3)
-                            "wet-snow" -> painterResource(id = R.drawable.c3_rs1)
-                            "snow" -> painterResource(id = R.drawable.c3_s2)
-                            "snow-showers" -> painterResource(id = R.drawable.c3_s3)
-                            "hail" -> painterResource(id = R.drawable.hail)
-                            "thunderstorm" -> painterResource(id = R.drawable.c3_st)
-                            "thunderstorm-with-rain" -> painterResource(id = R.drawable.c3_r2_st)
-                            "thunderstorm-with-hail" -> painterResource(id = R.drawable.c3_s2_st)
+                        painter = when (conditionCode) {
+                            1000 -> painterResource(id = R.drawable.clear)
+                            1003 -> painterResource(id = R.drawable.partly_cloudy)
+                            1006 -> painterResource(id = R.drawable.cloudy)
+                            1009 -> painterResource(id = R.drawable.overcast)
+                            1030 -> painterResource(id = R.drawable.mist)
+                            1063 -> painterResource(id = R.drawable.patchy_rain_possible)
+                            1066 -> painterResource(id = R.drawable.patchy_snow_possible)
+                            1069 -> painterResource(id = R.drawable.patchy_sleet_possible)
+                            1072 -> painterResource(id = R.drawable.patchy_freezing_drizzle_possible)
+                            1087 -> painterResource(id = R.drawable.thundery_outbreaks_possible)
+                            1114 -> painterResource(id = R.drawable.blowing_snow)
+                            1117 -> painterResource(id = R.drawable.blizzard)
+                            1135 -> painterResource(id = R.drawable.fog)
+                            1147 -> painterResource(id = R.drawable.freezing_fog)
+                            1150 -> painterResource(id = R.drawable.patchy_light_drizzle)
+                            1153 -> painterResource(id = R.drawable.light_drizzle)
+                            1168 -> painterResource(id = R.drawable.freezing_drizzle)
+                            1171 -> painterResource(id = R.drawable.heavy_freezing_drizzle)
+                            1180 -> painterResource(id = R.drawable.patchy_light_rain)
+                            1183 -> painterResource(id = R.drawable.light_rain)
+                            1186 -> painterResource(id = R.drawable.moderate_rain_at_times)
+                            1189 -> painterResource(id = R.drawable.moderate_rain)
+                            1192 -> painterResource(id = R.drawable.heavy_rain_at_times)
+                            1195 -> painterResource(id = R.drawable.heavy_rain)
+                            1198 -> painterResource(id = R.drawable.light_freezing_rain)
+                            1201 -> painterResource(id = R.drawable.moderate_or_heavy_freezing_rain)
+                            1204 -> painterResource(id = R.drawable.light_sleet)
+                            1207 -> painterResource(id = R.drawable.moderate_or_heavy_sleet)
+                            1210 -> painterResource(id = R.drawable.patchy_light_snow)
+                            1213 -> painterResource(id = R.drawable.light_snow)
+                            1216 -> painterResource(id = R.drawable.patchy_moderate_snow)
+                            1219 -> painterResource(id = R.drawable.moderate_snow)
+                            1222 -> painterResource(id = R.drawable.patchy_heavy_snow)
+                            1225 -> painterResource(id = R.drawable.heavy_snow)
+                            1237 -> painterResource(id = R.drawable.ice_pellets)
+                            1240 -> painterResource(id = R.drawable.light_rain_shower)
+                            1243 -> painterResource(id = R.drawable.moderate_or_heavy_rain_shower)
+                            1246 -> painterResource(id = R.drawable.torrential_rain_shower)
+                            1249 -> painterResource(id = R.drawable.light_sleet_showers)
+                            1252 -> painterResource(id = R.drawable.moderate_or_heavy_sleet_showers)
+                            1255 -> painterResource(id = R.drawable.light_snow_showers)
+                            1258 -> painterResource(id = R.drawable.moderate_or_heavy_snow_showers)
+                            1261 -> painterResource(id = R.drawable.light_showers_of_ice_pellets)
+                            1264 -> painterResource(id = R.drawable.moderate_or_heavy_showers_of_ice_pellets)
+                            1273 -> painterResource(id = R.drawable.patchy_light_rain_with_thunder)
+                            1276 -> painterResource(id = R.drawable.moderate_or_heavy_rain_with_thunder)
+                            1279 -> painterResource(id = R.drawable.patchy_light_snow_with_thunder)
+                            1282 -> painterResource(id = R.drawable.moderate_or_heavy_snow_with_thunder)
                             else -> painterResource(id = R.drawable.ic_baseline_cloud_24)
                         },
                         contentDescription = null
@@ -179,7 +329,7 @@ fun TomorrowWeatherPreview() {
 fun WeatherPreview() {
     WeatherAppTheme {
         Surface {
-            Weather(0, "cloudy", "Now", LoadingState.Done)
+            Weather(0.0, 1000, "Now", LoadingState.Done)
         }
     }
 }

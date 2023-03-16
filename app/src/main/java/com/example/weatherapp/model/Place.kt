@@ -4,7 +4,7 @@ import com.squareup.moshi.Json
 
 data class Place(
     @Json(name = "place_name") val name: String,
-    @Json(name = "center") val coordinates: List<Float>
+    @Json(name = "center") val coordinates: List<Double>
 )
 
 data class PlacesResponse(

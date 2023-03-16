@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.weatherapp.data.network.RetrofitClient.geoService
 import com.example.weatherapp.data.network.RetrofitClient.weatherService
 import com.example.weatherapp.model.*
+import com.example.weatherapp.utills.ExampleForecasts.forecasts
 import com.example.weatherapp.utills.LoadingState
 import kotlinx.coroutines.launch
 import retrofit2.Call
@@ -16,41 +17,31 @@ import retrofit2.Response
 
 class WeatherViewModel : ViewModel() {
 
-    private val _forecastsLoadingStates: MutableLiveData<LoadingState> =
+    private val _forecastsLoadingState: MutableLiveData<LoadingState> =
         MutableLiveData(LoadingState.Loading)
-    val forecastsLoadingStates: LiveData<LoadingState> get() = _forecastsLoadingStates
+    val forecastsLoadingState: LiveData<LoadingState> get() = _forecastsLoadingState
+
+    private val _placeLoadingState: MutableLiveData<LoadingState> =
+        MutableLiveData(LoadingState.Loading)
+    val placeLoadingState: LiveData<LoadingState> get() = _placeLoadingState
 
     val selectedPlace: MutableLiveData<Place> = MutableLiveData(
         Place(
-            "Moscow",
-            listOf(
-                37.61f,
-                55.75f
-            )
-        )
-    )
-    //private val _defaultPlace: MutableLiveData<Place> = MutableLiveData()
-
-    //val defaultPlace: LiveData<Place> get() = _defaultPlace
-
-    private val _forecastAtSelectedPlace: MutableLiveData<Forecasts> = MutableLiveData(
-        Forecasts(
-            FactWeather(
-                0, "cloudy"
-            ),
-            listOf(
-                ForecastsWeather("2016-08-03", Parts(Weather(0, "cloudy"))),
-                ForecastsWeather("2016-08-03", Parts(Weather(0, "cloudy"))),
-                ForecastsWeather("2016-08-03", Parts(Weather(0, "cloudy"))),
-                ForecastsWeather("2016-08-03", Parts(Weather(0, "cloudy"))),
-                ForecastsWeather("2016-08-03", Parts(Weather(0, "cloudy"))),
-                ForecastsWeather("2016-08-03", Parts(Weather(0, "cloudy"))),
-                ForecastsWeather("2016-08-03", Parts(Weather(0, "cloudy")))
+            "Moscow, Russia", listOf(
+                37.61, 55.75
             )
         )
     )
 
-    val forecastAtSelectedPlace: LiveData<Forecasts> get() = _forecastAtSelectedPlace
+    private val _forecastAtSelectedPlace: MutableLiveData<Weather> = MutableLiveData(
+        Weather(
+            CurrentWeatherSpecs(
+                0.0, Condition(1000)
+            ), forecasts
+        )
+    )
+
+    val forecastAtSelectedPlace: LiveData<Weather> get() = _forecastAtSelectedPlace
 
     private val _listQueryPlaces: MutableLiveData<List<Place>> = MutableLiveData()
     val listQueryPlaces: LiveData<List<Place>> get() = _listQueryPlaces
@@ -59,8 +50,7 @@ class WeatherViewModel : ViewModel() {
         val filteredList = mutableListOf<Place>()
         geoService.getListPlaces(query).enqueue(object : Callback<PlacesResponse> {
             override fun onResponse(
-                call: Call<PlacesResponse>,
-                response: Response<PlacesResponse>
+                call: Call<PlacesResponse>, response: Response<PlacesResponse>
             ) {
                 if (response.isSuccessful) {
                     response.body()?.responseList?.forEach {
@@ -85,40 +75,46 @@ class WeatherViewModel : ViewModel() {
     fun getWeatherInSelectedPlace(place: Place, onFailure: (String) -> Unit) {
         viewModelScope.launch {
             weatherService.getWeather(
-                latitude = place.coordinates[1].toString(),
-                longitude = place.coordinates[0].toString()
-            )
-                .enqueue(object : Callback<Forecasts> {
-                    override fun onResponse(call: Call<Forecasts>, response: Response<Forecasts>) {
-                        if (response.isSuccessful) {
-                            _forecastAtSelectedPlace.value = response.body()
-                            _forecastsLoadingStates.value = LoadingState.Done
-                        }
+                coordinates = "${place.coordinates[1]},${place.coordinates[0]}"
+            ).enqueue(object : Callback<Weather> {
+                override fun onResponse(call: Call<Weather>, response: Response<Weather>) {
+                    if (response.isSuccessful) {
+                        _forecastAtSelectedPlace.value = response.body()
+                        _forecastsLoadingState.value = LoadingState.Done
+                    } else {
+                        Log.d("TAG", "ne sus")
+                        _forecastsLoadingState.value = LoadingState.Error
                     }
+                }
 
-                    override fun onFailure(call: Call<Forecasts>, t: Throwable) {
-                        _forecastsLoadingStates.value = LoadingState.Error
-                        Log.d("TAG", t.message.toString())
-                        onFailure(t.message.toString())
-                    }
-                })
+                override fun onFailure(call: Call<Weather>, t: Throwable) {
+                    _forecastsLoadingState.value = LoadingState.Error
+                    Log.d("TAG", t.message.toString())
+                    onFailure(t.message.toString())
+                }
+            })
         }
     }
 
     fun getCurrentPlace(longitude: Float, latitude: Float) {
         geoService.getPlace(longitude, latitude).enqueue(object : Callback<PlacesResponse> {
             override fun onResponse(
-                call: Call<PlacesResponse>,
-                response: Response<PlacesResponse>
+                call: Call<PlacesResponse>, response: Response<PlacesResponse>
             ) {
                 if (response.isSuccessful) {
                     selectedPlace.value = response.body()?.responseList?.get(0)
+                    _placeLoadingState.value = LoadingState.Done
+                    getWeatherInSelectedPlace(selectedPlace.value!!) {
+                        Log.d("TAG", it)
+                    }
                 } else {
                     Log.d("TAG", "ne sus")
+                    _placeLoadingState.value = LoadingState.Error
                 }
             }
 
             override fun onFailure(call: Call<PlacesResponse>, t: Throwable) {
+                _placeLoadingState.value = LoadingState.Error
                 Log.d("TAG", t.message.toString())
             }
         })
