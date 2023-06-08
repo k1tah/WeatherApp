@@ -16,15 +16,15 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class WeatherViewModel : ViewModel() {
-
+    //Состояние загрузки данных о погоде
     private val _forecastsLoadingState: MutableLiveData<LoadingState> =
         MutableLiveData(LoadingState.Loading)
     val forecastsLoadingState: LiveData<LoadingState> get() = _forecastsLoadingState
-
+    //Состояние загрузки данных о местоположении
     private val _placeLoadingState: MutableLiveData<LoadingState> =
         MutableLiveData(LoadingState.Loading)
     val placeLoadingState: LiveData<LoadingState> get() = _placeLoadingState
-
+    //Выбранное местположение
     val selectedPlace: MutableLiveData<Place> = MutableLiveData(
         Place(
             "Moscow, Russia", listOf(
@@ -32,7 +32,7 @@ class WeatherViewModel : ViewModel() {
             )
         )
     )
-
+    //Прогноз в выбранном месте, здесь также используются значения по умолчанию
     private val _forecastAtSelectedPlace: MutableLiveData<Weather> = MutableLiveData(
         Weather(
             CurrentWeatherSpecs(
@@ -40,12 +40,11 @@ class WeatherViewModel : ViewModel() {
             ), forecasts
         )
     )
-
     val forecastAtSelectedPlace: LiveData<Weather> get() = _forecastAtSelectedPlace
-
+    //Cписок местоположений по запросу
     private val _listQueryPlaces: MutableLiveData<List<Place>> = MutableLiveData()
     val listQueryPlaces: LiveData<List<Place>> get() = _listQueryPlaces
-
+    //Поиск места
     fun searchPlaces(query: String, onFailure: (String) -> Unit) {
         val filteredList = mutableListOf<Place>()
         geoService.getListPlaces(query).enqueue(object : Callback<PlacesResponse> {
@@ -71,7 +70,7 @@ class WeatherViewModel : ViewModel() {
 
         })
     }
-
+    //Получение погоды в выбранном месте
     fun getWeatherInSelectedPlace(place: Place, onFailure: (String) -> Unit) {
         viewModelScope.launch {
             weatherService.getWeather(
@@ -95,7 +94,7 @@ class WeatherViewModel : ViewModel() {
             })
         }
     }
-
+    //Получение местоположения
     fun getCurrentPlace(longitude: Float, latitude: Float) {
         geoService.getPlace(longitude, latitude).enqueue(object : Callback<PlacesResponse> {
             override fun onResponse(

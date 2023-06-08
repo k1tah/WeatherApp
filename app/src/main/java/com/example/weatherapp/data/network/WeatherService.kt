@@ -5,8 +5,9 @@ import com.example.weatherapp.model.Weather
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Query
-
+//Запросы к API погоды
 interface WeatherService {
+    //Получение данных о погоде
     @GET("forecast.json?")
     fun getWeather(
         @Query("q") coordinates: String,

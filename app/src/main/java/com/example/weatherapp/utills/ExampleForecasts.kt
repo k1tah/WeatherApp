@@ -1,7 +1,7 @@
 package com.example.weatherapp.utills
 
 import com.example.weatherapp.model.*
-
+//Заглушка
 object ExampleForecasts {
     val forecasts = ForecastsWeather(
         listOf(

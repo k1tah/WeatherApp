@@ -9,9 +9,8 @@ object RetrofitClient {
 
     private const val GEO_BASE_URL = "https://api.mapbox.com/geocoding/v5/mapbox.places/"
     const val GEO_API_KEY =
-        "pk.eyJ1IjoibmljaXRhY3IiLCJhIjoiY2xlNGltNXJzMDNnajNvcGI3a3dma3RveiJ9.Q_rJ43grF8Tn1aEef7Ebnw"
-
-    const val WEATHER_API_KEY = "e5d59015e9e744cc842163459231203"
+        "ваш ключ"
+    const val WEATHER_API_KEY = "ваш ключ"
     private const val WEATHER_BASE_URL =
         "https://api.weatherapi.com/v1/"
 

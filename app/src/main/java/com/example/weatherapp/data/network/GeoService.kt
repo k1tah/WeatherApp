@@ -9,8 +9,9 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-
+//Гео запросы
 interface GeoService {
+    //Получение списка мест
     @GET("{query}.json?")
     fun getListPlaces(
         @Path("query") name: String,
@@ -19,7 +20,7 @@ interface GeoService {
         @Query("types") types: String = "place",
         @Query("access_token") apiKey: String = GEO_API_KEY
     ): Call<PlacesResponse>
-
+    //Получение места
     @GET("{longitude},{latitude}.json?")
     fun getPlace(
         @Path("longitude") longitude: Float,

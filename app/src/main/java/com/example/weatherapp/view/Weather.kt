@@ -1,9 +1,8 @@
 package com.example.weatherapp.view
 
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -11,10 +10,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -130,12 +126,12 @@ fun WeekWeather(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.size(64.dp))
+                Spacer(modifier = Modifier.size(32.dp))
                 forecast.find { it.date == selected }?.hour?.let {
                     AnimatedVisibility(
                         visible = showHourlyWeather,
-                        enter = slideInVertically(),
-                        exit = slideOutVertically()
+                        enter = slideInVertically() + expandVertically(),
+                        exit = slideOutVertically() + shrinkVertically()
                     ) {
                         HourlyWeather(forecast = it)
                     }
@@ -164,7 +160,7 @@ fun HourlyWeather(
         LoadingState.Done -> {
             Column(
                 verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(text = "Hours:")
                 Spacer(modifier = Modifier.size(16.dp))

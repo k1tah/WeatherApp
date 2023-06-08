@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,15 +16,16 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.weatherapp.ui.theme.WeatherAppTheme
-import com.example.weatherapp.utills.LoadingState
-import com.example.weatherapp.utills.Times
-import com.example.weatherapp.utills.checkPermission
-import com.example.weatherapp.utills.showShortToast
+import com.example.weatherapp.utills.*
 import com.example.weatherapp.view.DialogWindow
 import com.example.weatherapp.view.FindPlace
 import com.example.weatherapp.view.TimeTabRow
@@ -40,7 +42,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalPagerApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         //location settings
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         locationRequest = LocationRequest.Builder(
@@ -140,15 +142,18 @@ fun HomeScreen(
     val pages = listOf(Times.Now, Times.Tomorrow, Times.Week)
     val selectedTime = rememberPagerState(pageCount = pages.size)
 
-
     Column(
-        modifier = modifier.fillMaxSize().padding(vertical = 64.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(vertical = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        FindPlace(onPlaceClicked = {
-            showDefaultLocation = false
-        })
+        FindPlace(
+            onPlaceClicked = {
+                showDefaultLocation = false
+            }
+        )
         Spacer(modifier = Modifier.size(48.dp))
         TimeTabRow(
             pages,
@@ -168,10 +173,10 @@ fun HomeScreen(
         }
         if (!showDialogWindow) {
             when (placeLoadingState) {
-                LoadingState.Loading ->{
+                LoadingState.Loading -> {
                     Text(text = "Location determination...")
                 }
-                LoadingState.Error ->{
+                LoadingState.Error -> {
                     viewModel.getWeatherInSelectedPlace(place!!) {
                         showShortToast(context, it)
                     }
